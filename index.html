@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나만의 데이트 코스 컬렉션 (로컬 저장)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* 매우 밝은 배경색 (Apple 스타일의 배경) */
+            background-color: #f9fafb; 
+        }
+        /* Custom scrollbar for aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #d1d5db; /* Light gray */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #ffffff; 
+        }
+    </style>
+</head>
+<body class="p-4 md:p-12">
+
+    <!-- Notification Area (for custom alerts) -->
+    <div id="notificationArea" class="fixed top-5 right-5 z-50"></div>
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header Section: Elevated and highly rounded (Apple card style) -->
+        <header class="mb-12 p-8 bg-white shadow-xl rounded-3xl ring-1 ring-gray-100">
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-2 tracking-tight">
+                💖 나의 데이트 코스 컬렉션
+            </h1>
+            <p class="text-gray-500 text-lg">
+                카테고리별로 데이트 장소를 저장하고, 깔끔하게 관리하세요.
+            </p>
+            <p id="local-storage-note" class="text-xs text-red-500 mt-4 font-semibold">
+                ⚠️ 데이터는 현재 브라우저에만 저장됩니다! (localStorage 사용)
+            </p>
+        </header>
+
+        <!-- 자료 입력 폼: Floating card design -->
+        <div class="bg-white p-8 shadow-lg rounded-3xl mb-14 ring-1 ring-gray-100">
+            <h2 class="text-2xl font-bold text-gray-700 mb-5 border-b border-gray-100 pb-3">새로운 데이트 코스 포스트 추가</h2>
+            <form id="cardForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                
+                <!-- 1. 카테고리 선택 -->
+                <select id="category" required 
+                        class="p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-inner" 
+                        aria-label="카테고리 선택">
+                    <option value="" disabled selected>카테고리 선택</option>
+                    <option value="카페/디저트">☕️ 카페/디저트</option>
+                    <option value="액티비티/체험">🤸 액티비티/체험</option>
+                    <option value="맛집">🍽️ 맛집</option>
+                    <option value="문화/예술">🎨 문화/예술</option>
+                    <option value="야외/산책">🌳 야외/산책</option>
+                    <option value="기타">✨ 기타</option>
+                </select>
+
+                <!-- 2. 링크 입력 -->
+                <input type="url" id="link" placeholder="장소 링크 (URL)" required
+                       class="md:col-span-2 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-inner"
+                       aria-label="링크 입력">
+                
+                <!-- 3. 제목 입력 -->
+                <input type="text" id="title" placeholder="포스트 제목 (장소 이름)" required
+                       class="p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-inner"
+                       aria-label="제목 입력">
+                
+                <!-- 4. 내용 입력 -->
+                <textarea id="content" placeholder="내용 (간단한 요약 또는 메모)" rows="2" required
+                          class="md:col-span-3 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-inner resize-none"
+                          aria-label="내용 입력"></textarea>
+                
+                <!-- 5. 버튼 -->
+                <button type="submit" id="submitButton"
+                        class="md:col-span-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md transition duration-200 disabled:opacity-50 transform hover:scale-[1.01] active:scale-[0.99]">
+                    <span class="flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        포스트 저장
+                    </span>
+                </button>
+            </form>
+        </div>
+        
+        <!-- 카테고리 필터 (NEW) -->
+        <div class="mb-8 p-4 bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 flex flex-col md:flex-row items-center justify-start">
+            <h3 class="text-lg font-bold text-gray-700 mb-3 md:mb-0 mr-4 flex-shrink-0">카테고리 필터:</h3>
+            <select id="categoryFilter" 
+                    class="p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-inner w-full md:w-auto">
+                <option value="all">🌐 전체 보기 (총 ${0}개)</option>
+                <option value="카페/디저트">☕️ 카페/디저트</option>
+                <option value="액티비티/체험">🤸 액티비티/체험</option>
+                <option value="맛집">🍽️ 맛집</option>
+                <option value="문화/예술">🎨 문화/예술</option>
+                <option value="야외/산책">🌳 야외/산책</option>
+                <option value="기타">✨ 기타</option>
+            </select>
+        </div>
+
+
+        <!-- 카드 목록 표시 영역 (블로그 그리드) -->
+        <h2 class="text-3xl font-bold text-gray-800 mb-6">저장된 코스 목록</h2>
+        <div id="cardList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <!-- 카드가 여기에 동적으로 삽입됩니다 -->
+            <p id="loadingMessage" class="col-span-full text-center text-gray-500 py-20">
+                데이터를 로컬 저장소에서 불러오는 중입니다...
+            </p>
+        </div>
+        <div id="noCardsMessage" class="hidden col-span-full text-center text-gray-500 py-20 border-t mt-8">
+            <p class="text-lg">📂 저장된 포스트가 없습니다.</p>
+            <p class="text-md mt-2">위에 새로운 자료를 추가하여 첫 포스트를 만들어 보세요!</p>
+        </div>
+
+    </div>
+
+    <script type="module">
+        // 로컬 저장소 키
+        const STORAGE_KEY = 'dateCourseCollectionData';
+        
+        // UI 요소
+        const cardForm = document.getElementById('cardForm');
+        const cardList = document.getElementById('cardList');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const noCardsMessage = document.getElementById('noCardsMessage');
+        const submitButton = document.getElementById('submitButton');
+        const notificationArea = document.getElementById('notificationArea');
+        const categoryInput = document.getElementById('category'); 
+        const categoryFilter = document.getElementById('categoryFilter'); 
+        
+        // 데이터 상태
+        let allCards = []; 
+        let currentFilter = 'all'; 
+
+        // --- 커스텀 알림 함수 ---
+        function showNotification(message, type = 'success') {
+            const color = type === 'error' ? 'bg-red-500' : 'bg-green-500';
+            const icon = type === 'error' ? '🚨' : '✅';
+
+            const div = document.createElement('div');
+            div.className = `${color} text-white px-5 py-3 rounded-2xl shadow-xl mb-3 transition-all duration-300 transform translate-x-0 flex items-center space-x-3`;
+            div.innerHTML = `<span>${icon}</span><span class="font-medium">${message}</span>`;
+
+            notificationArea.appendChild(div);
+
+            setTimeout(() => {
+                div.classList.add('opacity-0', 'translate-x-full');
+                div.addEventListener('transitionend', () => div.remove());
+            }, 4000);
+        }
+
+        // --- 로컬 저장소에서 데이터 불러오기 ---
+        function loadCardsFromLocalStorage() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                // JSON 문자열을 객체 배열로 변환
+                allCards = data ? JSON.parse(data) : [];
+                
+                // 최신순으로 정렬
+                allCards.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                
+                console.log(`로컬 저장소에서 ${allCards.length}개의 카드 불러옴.`);
+            } catch (error) {
+                console.error("로컬 저장소 불러오기 오류:", error);
+                allCards = [];
+                showNotification("로컬 데이터를 불러오는 데 오류가 발생했습니다.", 'error');
+            }
+        }
+
+        // --- 로컬 저장소에 데이터 저장 및 UI 업데이트 ---
+        function saveAndRenderCards() {
+            try {
+                // 현재 카드 배열을 JSON 문자열로 변환하여 저장
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(allCards));
+                
+                // 필터 적용 후 렌더링
+                filterAndRender();
+
+            } catch (error) {
+                console.error("로컬 저장소 저장 오류:", error);
+                showNotification("데이터 저장 중 오류가 발생했습니다. 저장 공간을 확인하세요.", 'error');
+            }
+        }
+        
+        // --- 필터링 및 렌더링 함수 ---
+        function filterAndRender() {
+            // 필터링
+            const filteredCards = currentFilter === 'all'
+                ? allCards
+                : allCards.filter(card => card.category === currentFilter);
+
+            // 전체 카운트 업데이트
+            const allOption = categoryFilter.querySelector('option[value="all"]');
+            if(allOption) {
+                allOption.textContent = `🌐 전체 보기 (총 ${allCards.length}개)`;
+            }
+
+            renderCards(filteredCards);
+        }
+        
+        // --- 카드 렌더링 함수 ---
+        function renderCards(cards) {
+            cardList.innerHTML = ''; // 기존 목록 초기화
+            loadingMessage.classList.add('hidden'); // 로딩 메시지 숨김
+
+            if (cards.length === 0) {
+                noCardsMessage.classList.remove('hidden');
+                return;
+            }
+            noCardsMessage.classList.add('hidden');
+
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = "bg-white rounded-3xl overflow-hidden shadow-lg ring-1 ring-gray-100 flex flex-col hover:shadow-xl transition duration-300 transform hover:scale-[1.01] card-item";
+                cardElement.dataset.id = card.id;
+
+                // 썸네일/플레이스홀더 이미지 생성 로직 (Firebase 버전과 동일)
+                let domain = '';
+                try {
+                    domain = new URL(card.link).hostname.replace('www.', '');
+                } catch {
+                    domain = "Invalid Link";
+                }
+                const firstChar = domain.charAt(0).toUpperCase();
+                const colorMap = {
+                    'A': '667EEA', 'B': '9F7AEA', 'C': 'D53F8C', 'D': 'F6AD55', 'E': '48BB78', 'F': '38B2AC',
+                    'G': '4299E1', 'H': '0BC5EA', 'I': '48BB78', 'J': '9F7AEA', 'K': 'F6AD55', 'L': 'D53F8C',
+                    'M': '667EEA', 'N': '9F7AEA', 'O': 'D53F8C', 'P': 'F6AD55', 'Q': '48BB78', 'R': '38B2AC',
+                    'S': '4299E1', 'T': '0BC5EA', 'U': '48BB78', 'V': '9F7AEA', 'W': 'F6AD55', 'X': 'D53F8C',
+                    'Y': '667EEA', 'Z': '9F7AEA', '0': '4299E1', '1': '0BC5EA', '2': '48BB78', '3': '9F7AEA',
+                    '4': 'D53F8C', '5': 'F6AD55', '6': '667EEA', '7': '9F7AEA', '8': 'D53F8C', '9': 'F6AD55',
+                };
+                const bgColor = colorMap[firstChar] || '3B82F6'; 
+                
+                const imageUrl = `https://placehold.co/600x300/${bgColor}/ffffff?text=${domain}&font=sans-serif`;
+
+
+                cardElement.innerHTML = `
+                    <a href="${card.link}" target="_blank" rel="noopener noreferrer" class="block">
+                        <!-- 이미지 영역 -->
+                        <img src="${imageUrl}" alt="${card.title} 썸네일" class="w-full h-40 object-cover" onerror="this.onerror=null; this.src='https://placehold.co/600x300/e5e7eb/4b5563?text=Link+Post';" loading="lazy">
+                    </a>
+                    
+                    <div class="p-6 flex flex-col flex-grow">
+                        <!-- 카테고리 태그 -->
+                        <span class="inline-block bg-gray-100 text-gray-600 text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                            ${card.category || '미분류'}
+                        </span>
+
+                        <!-- 제목 및 삭제 버튼 -->
+                        <div class="flex justify-between items-start mb-3">
+                            <a href="${card.link}" target="_blank" rel="noopener noreferrer" class="block flex-grow mr-4">
+                                <h3 class="text-xl font-extrabold text-gray-900 hover:text-blue-500 line-clamp-2 transition-colors duration-200">${card.title}</h3>
+                            </a>
+                            <button class="delete-btn text-gray-300 hover:text-red-500 transition duration-150 p-2 rounded-full flex-shrink-0" data-id="${card.id}" aria-label="포스트 삭제">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <!-- 내용 (요약) -->
+                        <p class="text-gray-500 text-base mb-4 flex-grow line-clamp-3">${card.content}</p>
+
+                        <!-- 메타 정보 -->
+                        <div class="mt-auto border-t border-gray-100 pt-3 flex justify-between items-center">
+                            <small class="text-gray-400 text-xs font-medium">
+                                📅 ${card.timestamp ? new Date(card.timestamp).toLocaleDateString('ko-KR') : '날짜 정보 없음'}
+                            </small>
+                            <a href="${card.link}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-500 hover:text-blue-700 font-semibold truncate max-w-[50%]">
+                                ${domain}
+                            </a>
+                        </div>
+                    </div>
+                `;
+                cardList.appendChild(cardElement);
+            });
+
+            // 삭제 버튼 이벤트 리스너 재부착
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', handleDelete);
+            });
+        }
+
+        // --- 새 카드 추가 핸들러 ---
+        cardForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const categoryValue = categoryInput.value.trim(); 
+            const link = document.getElementById('link').value.trim();
+            const title = document.getElementById('title').value.trim();
+            const content = document.getElementById('content').value.trim();
+
+            if (!link || !title || !content || !categoryValue) { 
+                showNotification('모든 필드(카테고리 포함)를 입력해 주세요.', 'error');
+                return;
+            }
+            
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="flex items-center justify-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 저장 중...</span>';
+
+            try {
+                // 새로운 카드를 생성
+                const newCard = {
+                    id: crypto.randomUUID(), // 고유 ID 생성
+                    link: link,
+                    title: title,
+                    content: content,
+                    category: categoryValue, 
+                    timestamp: Date.now() 
+                };
+                
+                // 전역 배열에 추가
+                allCards.push(newCard);
+
+                // 로컬 저장소에 저장 및 UI 업데이트
+                saveAndRenderCards();
+
+                showNotification('새 포스트가 성공적으로 저장되었습니다!', 'success');
+                cardForm.reset();
+                categoryInput.value = ""; // 카테고리 드롭다운 초기화
+            } catch (error) {
+                console.error("카드 저장 중 오류 발생:", error);
+                showNotification(`포스트 저장 실패: ${error.message}`, 'error'); 
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<span class="flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>포스트 저장</span>';
+            }
+        });
+
+        // --- 카드 삭제 핸들러 ---
+        async function handleDelete(e) {
+            const cardId = e.currentTarget.dataset.id;
+            if (!cardId) return;
+            
+            e.currentTarget.disabled = true; 
+
+            try {
+                // ID와 일치하는 카드 제거
+                allCards = allCards.filter(card => card.id !== cardId);
+
+                // 로컬 저장소에 저장 및 UI 업데이트
+                saveAndRenderCards();
+                
+                showNotification("포스트가 성공적으로 삭제되었습니다.", 'success');
+            } catch (error) {
+                console.error("카드 삭제 중 오류 발생:", error);
+                showNotification(`포스트 삭제 실패: ${error.message}`, 'error'); 
+            }
+        }
+        
+        // --- 카테고리 필터 이벤트 리스너 ---
+        categoryFilter.addEventListener('change', (e) => {
+            currentFilter = e.target.value;
+            filterAndRender();
+        });
+
+        // 앱 시작 시 로컬 데이터 로드 및 초기 렌더링
+        window.onload = () => {
+            loadCardsFromLocalStorage();
+            filterAndRender();
+        };
+
+    </script>
+</body>
+</html>
